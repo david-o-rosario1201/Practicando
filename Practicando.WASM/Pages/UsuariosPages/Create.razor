@@ -1,0 +1,217 @@
+﻿@page "/CreateUsuarios"
+@inject HttpClient httpClient
+@inject NavigationManager navigation
+
+<PageTitle>Crear Nuevo Usuario</PageTitle>
+<EditForm Model="usuario" OnValidSubmit="Crear">
+	<DataAnnotationsValidator/>
+	<div class="container">
+		<div class="card shadow-lg">
+			@*Header*@
+			<div class="card-header">
+				<h3><strong>Crear Nuevo Usuario</strong></h3>
+			</div>
+			@*Body*@
+			<div class="card-body">
+				<div class="row mb-3">
+					@*UsuarioId*@
+					<div class="col-4">
+						<label class="form-label" for="usuarioId"><strong>UsuarioId:</strong></label>
+						<InputNumber id="usuarioId" class="form-control" @bind-Value="usuario.UsuarioId"></InputNumber>
+					</div>
+					@*Nombre*@
+					<div class="col-4">
+						<label class="form-label" for="nombre"><strong>Nombre:</strong></label>
+						<InputText id="nombre" class="form-control" @bind-Value="usuario.Nombre" placeholder="Ingrese su nombre"></InputText>
+						<ValidationMessage For="@(()=> usuario.Nombre)"></ValidationMessage>
+					</div>
+					@*Email*@
+					<div class="col-4">
+						<label class="form-label" for="email"><strong>Email:</strong></label>
+						<InputText type="email" id="email" class="form-control" @bind-Value="usuario.Email" placeholder="Ej: david123@hotmail.com"></InputText>
+						<ValidationMessage For="@(()=> usuario.Email)"></ValidationMessage>
+					</div>
+				</div>
+			</div>
+
+			@*Detalle*@
+			<div class="card card-header">
+				<h3><strong>Detalles</strong></h3>
+			</div>
+			@*Cuerpo del Detalle*@
+			<div class="card-body border border-1">
+				<div class="row">
+					@*Tipos de telefonos*@
+					<div class="col-4">
+						<label class="form-label" for="tipoTelefono"><strong>Tipo de Tel&eacute;fono:</strong></label>
+						<InputSelect id="tipoTelefono" class="form-select" @bind-Value="tipoId">
+							<option>Elije una opci&oacute;n</option>
+							@foreach (var telefonos in tiposTelefonos)
+							{
+								<option value="@telefonos.TipoId">@telefonos.Descripcion</option>
+							}
+						</InputSelect>
+					</div>
+					@*Telefono*@
+					<div class="col-4">
+						<label class="form-label" for="telefono"><strong>Tel&eacute;fono: </strong></label>
+						<label><em>(Nota: sin guiones)</em></label>
+						<InputText id="telefono" class="form-control" @bind-Value="telefono" placeholder="Ingrese su número de teléfono"></InputText>
+					</div>
+					@*Botón*@
+					<div class="col-4 d-flex align-items-end">
+						<button type="button" class="btn btn-outline-success" @onclick="AgregarDetalle"><i class="bi bi-plus-circle" /> Agregar</button>
+					</div>
+				</div>
+			</div>
+
+			@*Lista de Detalles*@
+			@if (usuario.UsuariosDetalles.Count > 0)
+			{
+				<table class="table table-bordered miTabla">
+					<thead>
+						<tr>
+							<th>Tipo de Tel&eacute;fono</th>
+							<th>Tel&eacute;fono</th>
+						</tr>
+					</thead>
+					<tbody>
+						@foreach (var telefono in usuario.UsuariosDetalles)
+						{
+							<tr>
+								<td>@telefono.TipoId</td>
+								<td>@telefono.Telefono</td>
+								<td><button type="button" class="btn btn-outline-danger" @onclick="()=> EliminarDetalle(telefono.Telefono)"><i class="bi bi-trash3-fill" /></button></td>
+							</tr>
+						}
+					</tbody>
+				</table>
+
+				<div class="miMensaje">
+					<p><strong>Cantidad de Tel&eacute;fonos: </strong> @usuario.UsuariosDetalles.Count</p>
+				</div>
+			}
+
+			@*Footer*@
+			<div class="card-footer d-flex justify-content-center">
+				<div class="px-2">
+					<button type="button" class="btn btn-outline-primary" @onclick="Volver"><i class="bi bi-box-arrow-left" /> Volver</button>
+				</div>
+				<button type="submit" class="btn btn-outline-success"><i class="bi bi-floppy-fill" /> Crear</button>
+			</div>
+		</div>
+	</div>
+</EditForm>
+
+
+@code {
+	public Usuarios usuario { get; set; } = new Usuarios();
+	public List<TiposTelefonos> tiposTelefonos = new List<TiposTelefonos>();
+	public string telefono { get; set; }
+	public int tipoId { get; set; }
+
+	protected override async Task OnInitializedAsync()
+	{
+		await Task.Delay(500);
+
+		tiposTelefonos = await httpClient.GetFromJsonAsync<List<TiposTelefonos>>("api/Usuarios/Telefonos");
+	}
+
+	public async Task Crear()
+	{
+		if (!await ValidarUsuario())
+			return;
+		else
+		{
+			var response = await httpClient.PostAsJsonAsync("api/Usuarios",usuario);
+			if (response.IsSuccessStatusCode)
+			{
+
+			}
+			else
+			{
+
+			}
+		}
+	}
+
+	public async Task AgregarDetalle()
+	{
+		var nuevoDetalle = new UsuariosDetalle { TipoId = tipoId, Telefono = telefono};
+		if(!String.IsNullOrEmpty(nuevoDetalle.Telefono) && nuevoDetalle.TipoId != 0)
+		{
+			if (await ValidarDetalle())
+				usuario.UsuariosDetalles.Add(nuevoDetalle);
+		}
+	}
+
+	public async Task<bool> ValidarUsuario()
+	{
+		var usuariosList = await httpClient.GetFromJsonAsync<List<Usuarios>>("api/Usuarios");
+		var nombre = usuariosList.Where(u => u.Nombre == usuario.Nombre);
+		var email = usuariosList.Where(u => u.Email == usuario.Email);
+
+		if(nombre.Any())
+		{
+			return false;
+		}
+		if(email.Any())
+		{
+			return false;
+		}
+
+		return true;
+	}
+
+	public async Task<bool> ValidarDetalle()
+	{
+		var usuariosList = await httpClient.GetFromJsonAsync<List<Usuarios>>("api/Usuarios");
+
+		//Esto es la lista de la base de datos
+		foreach(var usuarios in usuariosList)
+		{
+			foreach(var telefonos in usuarios.UsuariosDetalles)
+			{
+				if (telefonos.Telefono == telefono)
+					return false;
+			}
+		}
+
+
+		//Esto es la interna (temporal)
+		foreach (var telefonos in usuario.UsuariosDetalles)//el cambio es aqui
+		{
+			if (telefonos.Telefono == telefono)
+				return false;
+
+			if (!telefono.All(char.IsDigit))
+				return false;
+
+			if (telefono.Length != 10)
+				return false;
+		}
+
+		return true;
+	}
+
+	public async Task LimpiarPantlla()
+	{
+		tipoId = 0;
+		telefono = string.Empty;
+	}
+
+	public void EliminarDetalle(string tel)
+	{
+		var detalle = usuario.UsuariosDetalles.FirstOrDefault(u => u.Telefono == tel);
+
+		if(detalle != null)
+		{
+			usuario.UsuariosDetalles.Remove(detalle);
+		}
+	}
+
+	public void Volver()
+	{
+		navigation.NavigateTo("/Usuarios");
+	}
+}

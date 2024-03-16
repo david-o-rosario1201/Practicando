@@ -1,0 +1,273 @@
+﻿@page "/EditUsuarios"
+@page "/EditUsuarios/usuarioId={usuarioId:int}"
+@inject HttpClient httpClient
+@inject NavigationManager navigation
+
+<PageTitle>Editar Usuario</PageTitle>
+<EditForm Model="usuario" OnValidSubmit="Modificar">
+	<DataAnnotationsValidator />
+	<div class="container">
+		<div class="card shadow-lg">
+			@*Header*@
+			<div class="card-header">
+				<h3><strong>Editar Usuario</strong></h3>
+			</div>
+			@*Body*@
+			<div class="card-body">
+				<div class="row mb-3">
+					@*UsuarioId*@
+					<div class="col-4">
+						<label class="form-label" for="usuarioId"><strong>UsuarioId:</strong></label>
+						<InputNumber id="usuarioId" class="form-control" @bind-Value="usuario.UsuarioId"></InputNumber>
+					</div>
+					@*Nombre*@
+					<div class="col-4">
+						<label class="form-label" for="nombre"><strong>Nombre:</strong></label>
+						<InputText id="nombre" class="form-control" @bind-Value="usuario.Nombre" placeholder="Ingrese su nombre"></InputText>
+						<ValidationMessage For="@(()=> usuario.Nombre)"></ValidationMessage>
+					</div>
+					@*Email*@
+					<div class="col-4">
+						<label class="form-label" for="email"><strong>Email:</strong></label>
+						<InputText type="email" id="email" class="form-control" @bind-Value="usuario.Email" placeholder="Ej: david123@hotmail.com"></InputText>
+						<ValidationMessage For="@(()=> usuario.Email)"></ValidationMessage>
+					</div>
+				</div>
+			</div>
+
+			@*Detalle*@
+			<div class="card card-header">
+				<h3><strong>Detalles</strong></h3>
+			</div>
+			@*Cuerpo del Detalle*@
+			<div class="card-body border border-1">
+				<div class="row">
+					@*Tipos de telefonos*@
+					<div class="col-4">
+						<label class="form-label" for="tipoTelefono"><strong>Tipo de Tel&eacute;fono:</strong></label>
+						<InputSelect id="tipoTelefono" class="form-select" @bind-Value="tipoId">
+							<option>Elije una opci&oacute;n</option>
+							@foreach (var telefonos in tiposTelefonos)
+							{
+								<option value="@telefonos.TipoId">@telefonos.Descripcion</option>
+							}
+						</InputSelect>
+					</div>
+					@*Telefono*@
+					<div class="col-4">
+						<label class="form-label" for="telefono"><strong>Tel&eacute;fono: </strong></label>
+						<label><em>(Nota: sin guiones)</em></label>
+						<InputText id="telefono" class="form-control" @bind-Value="telefono" placeholder="Ingrese su número de teléfono"></InputText>
+					</div>
+					@*Botón*@
+					<div class="col-4 d-flex align-items-end">
+						<button type="button" class="btn btn-outline-success" @onclick="AgregarDetalle"><i class="bi bi-plus-circle" /> Agregar</button>
+					</div>
+				</div>
+			</div>
+
+			@*Lista de Detalles*@
+			@if (usuario.UsuariosDetalles.Count > 0)
+			{
+				<table class="table table-bordered miTabla">
+					<thead>
+						<tr>
+							<th>Tipo de Tel&eacute;fono</th>
+							<th>Tel&eacute;fono</th>
+						</tr>
+					</thead>
+					<tbody>
+						@foreach (var telefono in usuario.UsuariosDetalles)
+						{
+							<tr>
+								<td>@telefono.TipoId</td>
+								<td>@telefono.Telefono</td>
+								<td><button type="button" class="btn btn-outline-danger" @onclick="()=> EliminarDetalle(telefono)"><i class="bi bi-trash3-fill" /></button></td>
+							</tr>
+						}
+						<td class="fw-bold">Cantidad de Tel&eacute;fonos: @usuario.UsuariosDetalles.Count</td>
+					</tbody>
+				</table>
+
+				@* <div class="miMensaje">
+					<p><strong></p>
+				</div> *@
+			}
+
+			@*Footer*@
+			<div class="card-footer d-flex justify-content-center">
+				<div class="px-2">
+					<button type="button" class="btn btn-outline-primary" @onclick="Volver"><i class="bi bi-box-arrow-left" /> Volver</button>
+				</div>
+				<button type="submit" class="btn btn-outline-success"><i class="bi bi-floppy-fill" /> Modificar</button>
+			</div>
+		</div>
+	</div>
+	@mensaje
+	
+</EditForm>
+
+
+@code {
+	[Parameter]
+	public int usuarioId { get; set; }
+	public Usuarios usuario { get; set; } = new Usuarios();
+	public List<TiposTelefonos> tiposTelefonos = new List<TiposTelefonos>();
+	public List<UsuariosDetalle> listaTemporal = new List<UsuariosDetalle>();
+	public UsuariosDetalle usuarioDetalle { get; set; } = new UsuariosDetalle();
+	public string telefono { get; set; }
+	public int tipoId { get; set; }
+	public string mensaje { get; set; }
+	public string nombreLast { get; set; }
+	public string emailLast { get; set; }
+
+
+	protected override async Task OnInitializedAsync()
+	{
+		await Task.Delay(500);
+
+		usuario = await httpClient.GetFromJsonAsync<Usuarios>($"api/Usuarios/{usuarioId}");
+		tiposTelefonos = await httpClient.GetFromJsonAsync<List<TiposTelefonos>>("api/Usuarios/Telefonos");
+
+		nombreLast = usuario.Nombre;
+		emailLast = usuario.Email;
+	}
+
+	public async Task Modificar()
+	{
+		if (!await ValidarUsuario())
+		{
+			return;
+		}
+		else
+		{
+			//await httpClient.PostAsJsonAsync("api/Usuarios", usuario);
+
+			if (listaTemporal.Count > 0)
+				await BorrarDetallesBd();
+
+			var response = await httpClient.PutAsJsonAsync($"api/Usuarios/{usuario.UsuarioId}", usuario);
+
+			if (response.IsSuccessStatusCode)
+			{
+				mensaje = "Se modificó el usuario con éxito";
+				await Task.Delay(2000);
+				Volver();
+			}
+			else
+				mensaje = "No se pudo modificar el usuario con éxito";
+		}
+	}
+
+	public async Task AgregarDetalle()
+	{
+		var nuevoDetalle = new UsuariosDetalle { TipoId = tipoId, Telefono = telefono };
+		if (!String.IsNullOrEmpty(nuevoDetalle.Telefono) && nuevoDetalle.TipoId != 0)
+		{
+			if (await ValidarDetalle())
+				usuario.UsuariosDetalles.Add(nuevoDetalle);
+		}
+		else
+			mensaje = "No deben haber campos vacíos en el detalle";
+
+		await LimpiarPantlla();
+	}
+
+	public async Task<bool> ValidarUsuario()
+	{
+		var usuarioList = await httpClient.GetFromJsonAsync<List<Usuarios>>("api/Usuarios");
+		var nombre = usuarioList.Where(u => u.Nombre == usuario.Nombre);
+		var email = usuarioList.Where(u => u.Email == usuario.Email);
+
+		if (nombre.Any() && usuario.Nombre != nombreLast)
+		{
+			mensaje = "Ya existe un usuario con este nombre";
+			return false;
+		}
+		if (email.Any() && usuario.Email != emailLast)
+		{
+			mensaje = "Ya existe un usuario con este email";
+			return false;
+		}
+
+		return true;
+	}
+
+	public async Task<bool> ValidarDetalle()
+	{
+		var usuarioList = await httpClient.GetFromJsonAsync<List<Usuarios>>("api/Usuarios");
+
+		//Buscamos en toda lista
+		foreach (var usuarios in usuarioList)
+		{
+			foreach (var telefonos in usuarios.UsuariosDetalles)
+			{
+				if (telefonos.Telefono == telefono)
+					return false;
+			}
+		}
+
+		//Buscamos en la lista actual
+		foreach (var usuarios in usuario.UsuariosDetalles)
+		{
+			if (usuarios.Telefono == telefono)
+			{
+				mensaje = "Ya existe este número de teléfono";
+				return false;
+			}
+
+			if (!telefono.All(char.IsDigit))
+			{
+				mensaje = "Este número de teléfono no es válido";
+				return false;
+			}
+
+			if (telefono.Length != 10)
+			{
+				mensaje = "El número de teléfono debe contener 10 dígitos";
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	public async void EliminarDetalle(UsuariosDetalle telefono)
+	{
+		if (telefono.DetalleId == 0)
+			usuario.UsuariosDetalles.Remove(telefono);
+
+		else
+		{
+			usuario.UsuariosDetalles.Remove(telefono);
+			listaTemporal.Add(telefono);
+		}
+	}
+
+	public async Task BorrarDetallesBd()
+	{
+		foreach(var detalle in listaTemporal)
+		{
+			await httpClient.DeleteAsync($"api/Usuarios/{usuario.UsuarioId}/Detalle/{detalle.DetalleId}");
+		}
+	}
+
+	public async Task LimpiarPantlla()
+	{
+		tipoId = 0;
+		telefono = string.Empty;
+		await Task.Delay(2000);
+		BorrarMensaje();
+		//StateHasChanged();
+	}
+
+	public void BorrarMensaje()
+	{
+		mensaje = string.Empty;
+	}
+
+	public void Volver()
+	{
+		navigation.NavigateTo("/Usuarios");
+	}
+}

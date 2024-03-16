@@ -1,0 +1,147 @@
+﻿@page "/Usuarios"
+@inject HttpClient httpClient
+@inject NavigationManager navigation
+
+<PageTitle>Usuarios</PageTitle>
+<div class="container">
+	<div class="card shadow-lg">
+		@*Header*@
+		<div class="card-header">
+			<h3><strong>Usuarios</strong></h3>
+			<button type="button" class="btn btn-outline-primary" @onclick="IrACrear"><i class="bi bi-plus-circle" /> Crear</button>
+		</div>
+		@*Body*@
+		<div class="card-body">
+			@if(loading)
+			{
+				<div class="d-flex justify-content-center">
+					<div class="spinner-border text-info">
+
+					</div>
+				</div>
+			}
+			else if(usuarios.Count == 0)
+			{
+				<h1 class="miMensaje"><i class="bi bi-exclamation-triangle" /> No hay usuarios creados</h1>
+			}
+			else
+			{
+				@*Campos a Filtrar*@
+				<div class="mb-3">
+					<div class="row align-items-center">
+						<label class="form-label" for="filtro"><strong>Campo a Filtrar:</strong></label>
+						<div class="col-3">
+							<InputSelect id="filtro" class="form-select" @bind-Value="filtro">
+								<option>Elija una opci&oacute;n</option>
+								<option value="nombre">Nombre</option>
+							</InputSelect>
+						</div>
+						<div class="col-auto miFlecha">
+							<p>→</p>
+						</div>
+						<div class="col-3">
+							<div class="input-group">
+								<InputText class="form-control" @bind-Value="valorFiltro" placeholder="Ingrese un dato para filtrar"></InputText>
+								<button type="button" class="btn btn-outline-primary" @onclick="Buscar"><i class="bi bi-search" /></button>
+							</div>
+						</div>
+						<div class="col-3">
+							<button type="button" class="btn btn-outline-secondary" @onclick="Restablecer"><i class="bi bi-arrow-clockwise" /> Restablecer</button>
+						</div>
+					</div>
+				</div>
+
+
+
+				@*Tabla*@
+				<table class="table table-bordered miTabla">
+					<thead>
+						<tr>
+							<th>UsuarioId</th>
+							<th>Nombre</th>
+							<th>Email</th>
+							<th>Ver</th>
+							<th>Editar</th>
+							<th>Eliminar</th>
+						</tr>
+					</thead>
+					<tbody>
+						@foreach (var usuario in usuarios)
+						{
+							<tr>
+								<td>@usuario.UsuarioId</td>
+								<td>@usuario.Nombre</td>
+								<td>@usuario.Email</td>
+								<td><button type="button" class="btn btn-outline-info" @onclick="()=> IrADetalles(usuario.UsuarioId)"><i class="bi bi-eye" /></button></td>
+								<td><button type="button" class="btn btn-outline-warning" @onclick="()=> IrAEditar(usuario.UsuarioId)"><i class="bi bi-pencil-square" /></button></td>
+								<td><button type="button" class="btn btn-outline-danger" @onclick="()=> IrAEliminar(usuario.UsuarioId)"><i class="bi bi-trash3-fill" /></button></td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			}
+		</div>
+		@*Footer*@
+		<div class="card-footer">
+			<p><strong>Total de Usuarios: </strong>@usuarios.Count</p>
+		</div>
+	</div>
+</div>
+
+
+@code {
+	public bool loading { get; set; } = true;
+	public List<Usuarios> usuarios = new List<Usuarios>();
+	public string filtro { get; set; }
+	public string valorFiltro { get; set; }
+
+	protected override async Task OnInitializedAsync()
+	{
+		await Task.Delay(500);
+
+		usuarios = await httpClient.GetFromJsonAsync<List<Usuarios>>("api/Usuarios");
+
+		loading = false;
+
+		if(usuarios.Count > 0)
+			StateHasChanged();
+	}
+
+	public async Task Buscar()
+	{
+		if (!String.IsNullOrEmpty(filtro))
+		{	
+			foreach(var usuario in usuarios)
+			{
+				if(usuario.Nombre == valorFiltro)
+				{
+					usuarios.Clear();
+					usuarios.Add(usuario);
+					return;
+				}
+			}
+		}
+	}
+
+	public async Task Restablecer()
+	{
+		usuarios = await httpClient.GetFromJsonAsync<List<Usuarios>>("api/Usuarios");
+	}
+
+	public void IrACrear()
+	{
+		navigation.NavigateTo("/CreateUsuarios");
+	}
+	public void IrADetalles(int id)
+	{
+		navigation.NavigateTo($"/DetailsUsuarios/usuarioId={id}");
+	}
+	public void IrAEditar(int id)
+	{
+		navigation.NavigateTo($"/EditUsuarios/usuarioId={id}");
+	}
+	public void IrAEliminar(int id)
+	{
+		navigation.NavigateTo($"/DeleteUsuarios/usuarioId={id}");
+	}
+}

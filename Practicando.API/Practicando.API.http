@@ -1,0 +1,6 @@
+@Practicando.API_HostAddress = http://localhost:5245
+
+GET {{Practicando.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,0 +1,95 @@
+﻿@page "/DeleteUsuarios"
+@page "/DeleteUsuarios/usuarioId={usuarioId:int}"
+@inject HttpClient httpClient
+@inject NavigationManager navigation
+
+<PageTitle>Eliminar Usuario</PageTitle>
+<div class="container">
+	<div class="card shadow-lg">
+		@*Header*@
+		<div class="card-header">
+			<h3><strong>Eliminar Usuario</strong></h3>
+		</div>
+		@*Body*@
+		<div class="card-body">
+			<div class="row mb-3 col-5">
+				<h3><strong>¿Éstas seguro de que quieres eliminar a este usuario?</strong></h3>
+				@*Datos*@
+				<ul>
+					<li><strong>UsuarioId:</strong> @usuario.UsuarioId</li>
+					<li><strong>Nombre:</strong> @usuario.Nombre</li>
+					<li><strong>Email:</strong> @usuario.Email</li>
+				</ul>
+			</div>
+		</div>
+
+		@*Detalle*@
+		<div class="card card-header">
+			<h3><strong>Detalles</strong></h3>
+		</div>
+
+		@*Lista de Detalles*@
+		@if (usuario.UsuariosDetalles.Count > 0)
+		{
+			<table class="table table-bordered miTabla">
+				<thead>
+					<tr>
+						<th>Tipo de Tel&eacute;fono</th>
+						<th>Tel&eacute;fono</th>
+					</tr>
+				</thead>
+				<tbody>
+					@foreach (var telefono in usuario.UsuariosDetalles)
+					{
+						<tr>
+							<td>@telefono.TipoId</td>
+							<td>@telefono.Telefono</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+
+			<div class="miMensaje">
+				<p><strong>Cantidad de Tel&eacute;fonos: </strong> @usuario.UsuariosDetalles.Count</p>
+			</div>
+		}
+
+		@*Footer*@
+		<div class="card-footer d-flex justify-content-center">
+			<div class="px-2">
+				<button type="button" class="btn btn-outline-dark" @onclick="Volver"><i class="bi bi-box-arrow-left" /> Cancelar</button>
+			</div>
+			<button type="button" class="btn btn-outline-danger" @onclick="Eliminar"><i class="bi bi-trash3-fill" /> Eliminar</button>
+		</div>
+	</div>
+</div>
+
+
+@code {
+	[Parameter]
+	public int usuarioId { get; set; }
+	public Usuarios usuario { get; set; } = new Usuarios();
+
+	protected override async Task OnInitializedAsync()
+	{
+		await Task.Delay(500);
+
+		if (usuarioId > 0)
+			usuario = await httpClient.GetFromJsonAsync<Usuarios>($"api/Usuarios/{usuarioId}");
+	}
+
+	public async Task Eliminar()
+	{
+		var response = await httpClient.DeleteAsync($"api/Usuarios/{usuarioId}");
+
+		if(response.IsSuccessStatusCode)
+		{
+			Volver();
+		}
+	}
+
+	public void Volver()
+	{
+		navigation.NavigateTo("/Usuarios");
+	}
+}
